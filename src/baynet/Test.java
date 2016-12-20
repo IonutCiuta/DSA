@@ -22,11 +22,11 @@ public class Test {
 		D.addChild(G);
 		E.addChild(G);
 		
-		Graph graph = new Graph();
-		graph.addNode(A, B, C, D, E, F, G);
+		BayesianNetwork net = new BayesianNetwork();
+		net.addNode(A, B, C, D, E, F, G);
 
-		List<List<Node>> paths = graph.findPath(E, A);
-        System.out.println(paths);
+        net.checkIndependence(A, E, G);
+        net.checkIndependence(A, E, B);
     }
 }
 
@@ -56,7 +56,7 @@ class Node {
 
 	@Override
 	public String toString() {
-		return "Node [" + value + "]\n";
+		return "Node [" + value + "]";
 	}
 }
 
@@ -67,12 +67,19 @@ class Graph {
 		this.nodes.addAll(Arrays.asList(n));
 	}
 
-	List<List<Node>> findPath(Node s, Node d) {
+	/*
+	* A path is a list of nodes so the result is a list of lists
+	* */
+	List<List<Node>> findUndirectedPaths(Node s, Node d) {
 		List<List<Node>> paths = new ArrayList<>();
 		path(s, d, new HashSet<>(), new ArrayList<>(), paths);
-		return paths;
+        System.out.println("Computed paths: " + paths);
+        return paths;
 	}
-	
+
+	/*
+	* Keeps track of visited nodes and branches new path at each recursive call
+	* */
 	private void path(Node s, Node d, HashSet<Node> visited, List<Node> currentPath, List<List<Node>> paths) {
 		visited.add(s);
 		currentPath.add(s);
@@ -81,7 +88,10 @@ class Graph {
 			paths.add(currentPath);
 			return;
 		}
-		
+
+		/*
+		* A list of nodes accessible from the current node, both parents and children
+		* */
 		List<Node> proximity = new ArrayList<>();
 		
 		if(s.children != null)
@@ -95,7 +105,10 @@ class Graph {
 				if(!visited.contains(parent)) 
 					proximity.add(parent);
 			}
-		
+
+        /*
+        * Explore each possible path
+        * */
 		for(Node neighbour : proximity) {
 			ArrayList<Node> newPath = new ArrayList<>(currentPath);
 			path(neighbour, d, visited, newPath, paths);
@@ -105,4 +118,37 @@ class Graph {
 	public String toString() {
 		return nodes.toString();
 	}
+}
+
+class BayesianNetwork extends Graph {
+    /*
+    * Checks is a is independent of b given observed using the principle od chained causality
+    * */
+    public void checkIndependence(Node a, Node b, Node observed) {
+        /*
+        * Compute paths from a to b
+        * */
+        List<List<Node>> pathsFromAtoB = findUndirectedPaths(a, b);
+
+        /*
+        * Find if there is a path that contains observed
+        * */
+        for(List<Node> path : pathsFromAtoB) {
+            for (Node node : path) {
+                if (node.value == observed.value) {
+                    /*
+                    * At this point, we know that observed is on the path, between a and b
+                    * this means that there must be an edge that enters observed and an edge that exists observed
+                    * */
+                    System.out.println(a.value + " _|_ " + b.value + " | " + observed.value + " - true");
+                    return;
+                }
+            }
+        }
+
+        /*
+        * The criteria isn't matched
+        * */
+        System.out.println(a.value + " _|_ " + b.value + " | " + observed.value + " - false");
+    }
 }
